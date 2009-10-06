@@ -17,62 +17,62 @@
 
 + (id)jsonResponseWithString:(NSString *)jsonString
 {
-	return [[[JsonResponse alloc] initWithString:jsonString] autorelease];
+    return [[[JsonResponse alloc] initWithString:jsonString] autorelease];
 }
 
 - (id)initWithString:(NSString *)jsonString
 {
-	self = [super init];
-	
-	if (self != nil)
-	{
-		id jsonObject = [jsonString JSONValue];
-		
-		if (jsonObject == nil)
-		{
-			// failure!
-			[self release];
-			return nil;
-		}
-		
-		if ([jsonObject isKindOfClass:[NSArray class]])			
-		{
-			array = (NSArray*) [jsonObject retain];
-		}
-		else if ([jsonObject isKindOfClass:[NSDictionary class]])
-		{
-			dictionary = (NSDictionary*) [jsonObject retain];
-		}		
-	}
-	
-	return self;
+    self = [super init];
+    
+    if (self != nil)
+    {
+        id jsonObject = [jsonString JSONValue];
+        
+        if (jsonObject == nil)
+        {
+            // failure!
+            [self release];
+            return nil;
+        }
+        
+        if ([jsonObject isKindOfClass:[NSArray class]])         
+        {
+            array = (NSArray*) [jsonObject retain];
+        }
+        else if ([jsonObject isKindOfClass:[NSDictionary class]])
+        {
+            dictionary = (NSDictionary*) [jsonObject retain];
+        }       
+    }
+    
+    return self;
 }
 
 - (BOOL)isArray
 {
-	return array != nil;
+    return array != nil;
 }
 
 - (BOOL)isDictionary
 {
-	return dictionary != nil;
+    return dictionary != nil;
 }
 
 - (NSArray *)array
 {
-	return array;
+    return array;
 }
 
 - (NSDictionary *)dictionary
 {
-	return dictionary;
+    return dictionary;
 }
 
 - (void)dealloc
 {
-	[array release];
-	[dictionary release];
-	[super dealloc];
+    [array release];
+    [dictionary release];
+    [super dealloc];
 }
 
 @end

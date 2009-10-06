@@ -8,8 +8,8 @@
 
 
 @interface JsonResponse : NSObject {
-	NSArray *array;
-	NSDictionary *dictionary;
+    NSArray *array;
+    NSDictionary *dictionary;
 }
 
 + (id)jsonResponseWithString:(id)jsonString; /* nil indicates failure */

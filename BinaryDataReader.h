@@ -13,11 +13,11 @@
 #import <UIKit/UIKit.h>
 
 @interface BinaryDataReader : NSObject {
-	BOOL littleEndian;
-	NSStringEncoding encoding;
-	NSData *data;
-	const uint8_t *current;
-	NSUInteger scanRemain;
+    BOOL littleEndian;
+    NSStringEncoding encoding;
+    NSData *data;
+    const uint8_t *current;
+    NSUInteger scanRemain;
 }
 
 +(id)binaryDataScannerWithData:(NSData*)data littleEndian:(BOOL)littleEndian defaultEncoding:(NSStringEncoding)defaultEncoding;

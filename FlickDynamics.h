@@ -37,37 +37,37 @@
 #import <Foundation/Foundation.h>
 
 typedef struct TouchInfo {
-	double x;
-	double y;
-	NSTimeInterval time; // all relative to the 1970 GMT epoch
+    double x;
+    double y;
+    NSTimeInterval time; // all relative to the 1970 GMT epoch
 } TouchInfo;
 
-@interface FlickDynamics : NSObject {	
-	TouchInfo *history;
-	NSUInteger historyCount;
-	NSUInteger historyHead;
+@interface FlickDynamics : NSObject {   
+    TouchInfo *history;
+    NSUInteger historyCount;
+    NSUInteger historyHead;
 
-	double currentScrollLeft;
-	double currentScrollTop;
-	
-	double animationRate;
-	
-	double viewportWidth;
-	double viewportHeight;	
-	
-	double scrollBoundsLeft;
-	double scrollBoundsTop;
-	double scrollBoundsRight;
-	double scrollBoundsBottom;
-	
-	double motionX;
-	double motionY;
-	
-	double motionDamp;
-	double motionMultiplier;
-	double motionMinimum;
-	double flickThresholdX;
-	double flickThresholdY;	
+    double currentScrollLeft;
+    double currentScrollTop;
+    
+    double animationRate;
+    
+    double viewportWidth;
+    double viewportHeight;  
+    
+    double scrollBoundsLeft;
+    double scrollBoundsTop;
+    double scrollBoundsRight;
+    double scrollBoundsBottom;
+    
+    double motionX;
+    double motionY;
+    
+    double motionDamp;
+    double motionMultiplier;
+    double motionMinimum;
+    double flickThresholdX;
+    double flickThresholdY; 
 }
 
 +(id)flickDynamicsWithViewportWidth:(double)viewportWidth viewportHeight:(double)viewportHeight scrollBoundsLeft:(double)scrollBoundsLeft scrollBoundsTop:(double)scrollBoundsTop scrollBoundsRight:(double)scrollBoundsRight scrollBoundsBottom:(double)scrollBoundsBottom animationRate:(NSTimeInterval)animationRate;

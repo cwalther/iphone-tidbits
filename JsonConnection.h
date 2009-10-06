@@ -9,9 +9,9 @@
 
 enum
 {
-	JsonConnectionError_Invalid_Json = 1,
-	JsonConnectionError_Network_Failure,
-	JsonConnectionError_Unknown_Error
+    JsonConnectionError_Invalid_Json = 1,
+    JsonConnectionError_Network_Failure,
+    JsonConnectionError_Unknown_Error
 } JsonConnectionError;
 
 @protocol JsonConnectionDelegate;
@@ -19,10 +19,10 @@ enum
 
 @interface JsonConnection : NSObject {
     NSURLConnection *connection;
-	NSURLResponse *response;
-    NSMutableData *data;	
-	id<JsonConnectionDelegate> delegate;	
-	id userData;	
+    NSURLResponse *response;
+    NSMutableData *data;    
+    id<JsonConnectionDelegate> delegate;    
+    id userData;    
 }
 
 + (id)connectionWithURL:(NSString *)theURL delegate:(id<JsonConnectionDelegate>)theDelegate userData:(id)theUserData;

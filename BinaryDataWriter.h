@@ -14,9 +14,9 @@
 
 
 @interface BinaryDataWriter : NSObject {
-	BOOL littleEndian;
-	NSStringEncoding encoding;
-	NSMutableData *data;
+    BOOL littleEndian;
+    NSStringEncoding encoding;
+    NSMutableData *data;
 }
 
 +(id)emitterWithDefaultEncoding:(NSStringEncoding)defaultEncoding littleEndian:(BOOL)littleEndian;
