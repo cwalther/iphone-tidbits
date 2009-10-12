@@ -9,6 +9,11 @@
 //  This code is released under the BSD license. If you use it in your product, please
 //  let me know and, if possible, please put me in your credits.
 //
+//  WARNING: read the string methods carefully before you use them. The encoding is applied
+//  only after bytes are consumed, not during the consumption. This means your delimiter
+//  could be missed -- these methods are only useful for a limited number of encodings and
+//  file formats (oddly enough, they work great with the file format I originally wrote this for. :-)
+//
 
 
 #import "BinaryDataReader.h"
