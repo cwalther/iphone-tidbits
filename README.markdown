@@ -5,11 +5,13 @@ Here is a collection of code I've written for the iPhone that I've found useful 
 
 It is a fairly random collection. Currently we have:
 
-1. **FlickDynamics** -- implements the motion dynamics of Cocoa Touch's UIScrollView, but does so in a way that you can slot it in anywhere. I wrote it to handle scroll dynamics of a game's OpenGL|ES view. It is independent of coordinate system, etc.
+1. **iPhone Artwork Extractor** -- this python script is capable of extracting artwork packed in iPhone SDK files. See the subdirectory README for details.
 
-2. **BinaryDataReader** and **BinaryDataWriter** -- read and write byte streams, deal with endian-ness, etc. Has been useful for cracking random/old binary file formats.
+2. **FlickDynamics** -- implements the motion dynamics of Cocoa Touch's UIScrollView, but does so in a way that you can slot it in anywhere. I wrote it to handle scroll dynamics of a game's OpenGL|ES view. It is independent of coordinate system, etc.
 
-3. **JsonConnection** and **JsonResponse** -- makes it a little easier to talk to a JSON web service asynchronously. Deals with return content encodings, etc. Requires SBJSON.
+3. **BinaryDataReader** and **BinaryDataWriter** -- read and write byte streams, deal with endian-ness, etc. Has been useful for cracking random/old binary file formats.
+
+4. **JsonConnection** and **JsonResponse** -- makes it a little easier to talk to a JSON web service asynchronously. Deals with return content encodings, etc. Requires SBJSON.
 
 
 All code is released under the BSD license.
