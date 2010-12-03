@@ -126,14 +126,17 @@ class BinaryFile(object):
 #------------------------------------------------------------------------------
 # MachOBinaryFile
 #------------------------------------------------------------------------------
+
+# See http://www.opensource.apple.com/source/CF/CF-550.42/CFString.c
+kCFStringSize = 16 # in bytes
+kCFHasLengthByte = 0x04
+kCFHasNullByte = 0x08
+kCFIsUnicode = 0x10
         
 class MachOBinaryFile(BinaryFile, MachO):
     """Represents a Mach-O binary file, with special methods to 
     find important data in the file."""
 
-    # How large is the NSConstantString struct, in bytes?
-    NSCONSTANTSTRING_SIZE = 16
-    
     def __init__(self, filename):
         super(MachOBinaryFile, self).__init__(filename)
 
@@ -144,6 +147,14 @@ class MachOBinaryFile(BinaryFile, MachO):
     @property
     def default_endian(self):
         return self.default_header.endian
+        
+    @property
+    def is_little_endian(self):
+        return self.default_endian == "<"
+        
+    @property
+    def is_big_endian(self):
+        return self.default_endian == ">"
 
     def macho_sections(self):
         for flat in flatten(self.default_header.commands):
@@ -161,22 +172,41 @@ class MachOBinaryFile(BinaryFile, MachO):
         
     def iter_strings(self):
         cfs = self.cfstring_section()
-        string_count = cfs.size / MachOBinaryFile.NSCONSTANTSTRING_SIZE
+        string_count = cfs.size / kCFStringSize
         for i in range(string_count):
-            cfstring_addr = cfs.addr + (i * MachOBinaryFile.NSCONSTANTSTRING_SIZE)
-            pointer, length = self.read_cfstring(cfstring_addr)
-            yield (cfstring_addr, pointer, length, self.read_string(pointer, length))
+            cfstring_addr = cfs.addr + (i * kCFStringSize)
+            flags, pointer, length = self.read_cfstring(cfstring_addr)
+            yield (cfstring_addr, pointer, length, self.read_string(flags, pointer, length))
 
     def read_cfstring(self, offset):
-        # NSConstantString { Class class; char *string; int length }
-        objc_class, pointer, length = struct.unpack_from('<QLL', self.data, offset)
-        return (pointer, length)
+        # struct __builtin_CFString { const int *isa; int flags; const char *str; long length; }
+        objc_class, flags, pointer, length = struct.unpack_from('<LLLL', self.data, offset)
+        return (flags, pointer, length)
 
-    def read_string(self, offset, length):
-        # TODO encoding: which to use?
-        bytes = self.data[offset:offset+length]
-        # assert self.data[offset+length] == '\0', "Didn't read proper length."
-        return bytes.decode('mac-roman')
+    def read_string(self, flags, offset, length):
+        s = None
+        
+        if (flags & kCFHasLengthByte):
+            assert ord(self.data[offset]) == length, "Invalid length or length byte."
+            offset += 1
+        
+        if (flags & kCFIsUnicode):
+            bytes = self.data[offset:offset+(length * 2)]
+            last_byte = self.data[offset+(length * 2)]
+            if self.is_little_endian:
+                s = bytes.decode('utf-16le')
+            else:
+                s = bytes.decode('utf-16be')
+        else:
+            bytes = self.data[offset:offset+length]
+            last_byte = self.data[offset+length]
+            s = bytes.decode('ascii')
+        
+        if (flags & kCFHasNullByte):
+            assert last_byte == '\0', "Something went wrong reading cfstring."
+            
+        return s
+    
 
 
 #------------------------------------------------------------------------------
@@ -195,9 +225,10 @@ class ArtworkBinaryFile(BinaryFile):
 
 def find_png_strings(library):
     for cfstring_addr, pointer, length, string in library.iter_strings():
-        if string.endswith('.png'):
-            found_refs = library.find_all_long(cfstring_addr)
-            print '[%X] %r %s' % (cfstring_addr, string, found_refs)
+        print string
+        # if string.endswith('.png'):
+        #     found_refs = library.find_all_long(cfstring_addr)
+        #     print '[%X] %r %s' % (cfstring_addr, string, found_refs)
     
 def main():
     library = MachOBinaryFile(sys.argv[1])
