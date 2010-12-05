@@ -92,33 +92,17 @@ class MachOBinaryFile(BinaryFile, MachO):
         """Given a symbol (potentially not exported), return the offset into the binary where
         that symbol's data is found."""
         
-        #
-        # Find the relevant segments and symbol table.
-        #
-        segment_linkedit = None
-        segment_text = None
-        symbol_table = None
-        
-        for load_command, segment_command, data in self.default_header.commands:
-            if load_command.cmd == macholib.mach_o.LC_SEGMENT:
-                if segment_command.segname.startswith(macholib.mach_o.SEG_TEXT):
-                    segment_text = segment_command
-                elif segment_command.segname.startswith(macholib.mach_o.SEG_LINKEDIT):
-                    segment_linkedit = segment_command
-            elif load_command.cmd == macholib.mach_o.LC_SYMTAB:
-                symbol_table = segment_command # effectively a cast...
-        
-        if (segment_linkedit is None) or (segment_text is None) or (symbol_table is None):
+        # Find the symbol table.
+        symbol_table = self.default_header.getSymbolTableCommand()
+        if symbol_table is None:
             return None
         
-        #
         # Compute key offsets into the file. 
-        #
-        
         # (The file wasn't loaded via dyld so we don't have to compute vm/file slides.)
         symbols_addr = self.default_header_offset + symbol_table.symoff
         strings_addr = self.default_header_offset + symbol_table.stroff
-        
+
+        # Find the symbol, and if found determine the address for its data.
         symbol_addr = symbols_addr
         for i in range(symbol_table.nsyms):
             symbol_nlist = NList(self.default_endian, self.data, symbol_addr)
