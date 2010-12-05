@@ -23,7 +23,7 @@
 #
 # You can also import a directory of images to create a new .artwork file:
 #
-#   ./iOS-artwork.py import -a original_artwork_file.artwork -d importDirectory -c created_artwork_file.artwork
+#   ./iOS-artwork.py create -a original_artwork_file.artwork -d importDirectory -c created_artwork_file.artwork
 #
 # Please see the README.markdown file for more details.
 
@@ -32,9 +32,11 @@ import sys
 import json
 from optparse import OptionParser
 
-from artwork.artwork_file import ArtworkBinaryFile
+import PIL.Image
+
+from artwork.artwork_file import ArtworkBinaryFile, WritableArtworkBinaryFile
     
-COMMANDS = ["export", "import"]
+COMMANDS = ["export", "create"]
 
 class ArtworkInfo(object):
     def __init__(self, jsonable):
@@ -103,9 +105,56 @@ def action_export(artwork_file_name, directory):
         export_file_name = os.path.join(directory, image_info.name)
         pil_image.save(export_file_name, file_extension(export_file_name))
         print "\texported %s" % export_file_name
+        
+    print "\nDONE!"
     
-def action_import(artwork_file_name, directory, create_file_name):
-    pass
+def action_create(artwork_file_name, directory, create_file_name):
+    set_info = get_artwork_set_info(artwork_file_name)
+    artwork_binary = ArtworkBinaryFile(artwork_file_name)
+    create_binary = WritableArtworkBinaryFile(create_file_name, artwork_binary)
+    create_binary.open()
+    
+    print "\nImporting %d images into new file named %s...\n\t(Using %s version %s as a template.)" % (set_info.image_count, create_file_name, set_info.name, set_info.version)
+    
+    for image_info in set_info.iter_images():
+        #
+        # Grab the image from disk
+        #
+        pil_image_name = os.path.join(directory, image_info.name)
+        if not os.path.exists(pil_image_name):
+            create_binary.delete()
+            bail("FAIL. An image named %s was not found in directory %s" % (image_info.name, directory))
+            
+        #
+        # Validate the image
+        #
+        try:
+            pil_image = PIL.Image.open(pil_image_name)
+        except IOError:
+            create_binary.delete()
+            bail("FAIL. The image file named %s was invalid or could not be read." % pil_image_name)
+        
+        actual_width, actual_height = pil_image.size
+        if (actual_width != image_info.width) or (actual_height != image_info.height):
+            create_binary.delete()
+            bail("FAIL. The image file named %s should be %d x %d in size, but is actually %d x %d." % (pil_image_name, image_info.width, image_info.height, actual_width, actual_height))
+        
+        try:
+            if (pil_image.mode != 'RGBA') and (pil_image.mode != 'RGB'):
+                pil_image = pil_image.convert('RGBA')
+        except:
+            create_binary.delete()
+            bail("FAIL. The image file named %s could not be converted to a usable format." % pil_image_name)
+        
+        #
+        # Write it
+        #
+        create_binary.write_pil_image(image_info.width, image_info.height, image_info.offset, pil_image)
+        print "\timported %s" % image_info.name
+    
+    create_binary.close()
+    
+    print "\nDONE!"
     
 def main(argv):
     #
@@ -149,7 +198,7 @@ def main(argv):
     if command not in COMMANDS:
         usage(parser)
         
-    if (command == "import") and (options.create_file_name is None):
+    if (command == "create") and (options.create_file_name is None):
         usage(parser)
         
     abs_artwork_file_name = os.path.abspath(options.artwork_file_name)
@@ -171,11 +220,11 @@ def main(argv):
 
     if command == "export":
         action_export(abs_artwork_file_name, abs_directory)
-    elif command == "import":
+    elif command == "create":
         abs_create_file_name = os.path.abspath(options.create_file_name)
         if os.path.exists(abs_create_file_name):
             bail("Sorry, but the create file %s already exists." % options.create_file_name)
-        action_import(abs_artwork_file_name, abs_directory, abs_create_file_name)
+        action_create(abs_artwork_file_name, abs_directory, abs_create_file_name)
             
 if __name__ == "__main__":
     main(sys.argv)
