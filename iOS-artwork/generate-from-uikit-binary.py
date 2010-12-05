@@ -11,14 +11,14 @@
 #
 #-------------------------------------------------------------------------------
 
-# generate-from-uikit-binary.py
+# generate-from-macho-binary.py
 #
 # The code in this file is capable of grabbing the names, sizes, and offsets
 # of all images in all (shared) artwork files.
 #
 # To run it, use:
 #
-#   ./generate-from-uikit-binary.py /path/to/UIKit /output/path/
+#   ./generate-from-macho-binary.py /path/to/UIKit /output/directory/ 4.2.1
 #
 # In general, you shouldn't have to run this. I'll run it when new versions of the
 # OS show up. 
@@ -36,6 +36,7 @@ import mmap
 import macholib
 from macholib.MachO import MachO
 import PIL.Image
+import json
 
 
 #------------------------------------------------------------------------------
@@ -355,10 +356,11 @@ class MachOBinaryFile(BinaryFile, MachO):
             return None
         
         #
-        # Compute key offsets into the file
+        # Compute key offsets into the file. 
         #
         
-        vm_slide = self.default_header_offset - segment_text.vmaddr
+        # (Luckily, the mach-o wasn't loaded in via dyld so we don't have to compute
+        # a vm or file slide.)
         symbols_addr = self.default_header_offset + symbol_table.symoff
         strings_addr = self.default_header_offset + symbol_table.stroff
         
@@ -368,7 +370,7 @@ class MachOBinaryFile(BinaryFile, MachO):
             string_addr = strings_addr + symbol_nlist.n_strx
             read_symbol = self.read_cstring(string_addr)
             if (symbol_nlist.n_strx != 0) and (symbol == read_symbol):
-                address = vm_slide + symbol_nlist.n_value
+                address = symbol_nlist.n_value
                 if (symbol_nlist.n_desc & NList.N_ARM_THUMB_DEF) != 0:
                     return (address | 1)
                 else:
@@ -444,27 +446,37 @@ class ArtworkBinaryFile(BinaryFile):
 # main()
 #------------------------------------------------------------------------------
 
+def process_artwork_set(artwork_set, uikit_directory_name, output_directory_name, version_string):
+    print "Found artwork set named %s" % artwork_set.name
+    images_jsonable = []
+    for artwork_name, artwork_size in artwork_set.iter_artworks():
+        images_jsonable.append((artwork_name, artwork_size.width, artwork_size.height, artwork_size.offset))
+    artwork_set_file_name = os.path.join(uikit_directory_name, "%s.artwork" % artwork_set.name)
+    artwork_set_file_size = os.path.getsize(artwork_set_file_name)
+    full_jsonable = {
+        "name": os.path.basename(artwork_set_file_name),
+        "version": version_string,
+        "byte_size": artwork_set_file_size,
+        "images": images_jsonable,
+    }
+    full_json = json.dumps(full_jsonable, indent = 4)
+    images_file_name = os.path.join(output_directory_name, "%s.artwork-%d.json" % (artwork_set.name, artwork_set_file_size))
+    images_file = open(images_file_name, "w")
+    images_file.write(full_json)
+    images_file.close()
+
 def main():
-    uikit = UIKitBinaryFile(sys.argv[1])
+    uikit_file_name = os.path.abspath(sys.argv[1])
+    uikit_directory_name = os.path.dirname(uikit_file_name)
+    uikit = UIKitBinaryFile(uikit_file_name)
+    
+    output_directory_name = os.path.abspath(sys.argv[2])
+    version_string = sys.argv[3]
     
     for artwork_set in uikit.iter_shared_iphone_image_sets():
-        print "Found artwork set named %s" % artwork_set.name
-        for artwork_name, artwork_size in artwork_set.iter_artworks():
-            print "\t%s: (%d x %d at %X)" % (artwork_name, artwork_size.width, artwork_size.height, artwork_size.offset)
-
+        process_artwork_set(artwork_set, uikit_directory_name, output_directory_name, version_string)
     for artwork_set in uikit.iter_shared_ipad_image_sets():
-        print "Found artwork set named %s" % artwork_set.name
-        for artwork_name, artwork_size in artwork_set.iter_artworks():
-            print "\t%s: (%d x %d at %X)" % (artwork_name, artwork_size.width, artwork_size.height, artwork_size.offset)
-    
+        process_artwork_set(artwork_set, uikit_directory_name, output_directory_name, version_string)
     
 if __name__ == "__main__":
     main()
-
-
-# Random useless notes
-# For Shared~iphone.artwork, 4256480 (0x0040F2E0)
-# next is at 4256495 (0x0040F2EF)
-# Name indexes start at 5497296 (0x0053E1D0) -- really 0x0053e1c8 is the start of the NSConstantString
-# Indirect name indexes start at one of {5407456, 5410496, 5415136, 5497288}
-# looks like 4 bytes index, 2 bytes for length, 2 bytes unknown, 4 bytes unknown, 4 bytes often C8070000

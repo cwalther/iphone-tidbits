@@ -52,3 +52,15 @@ You may wonder why you have to supply the *original* `.artwork` file in this exa
 ### Contact Me
 
 Feel free to send comments, suggestions, and improvements my way. See code comments for details on making improvements. You can find my email address in the information area below.
+
+### What's in this directory?
+
+The `iOS-artwork.py` script is the main workhorse here. It's probably the only thing you'll want to use.
+
+The `generate-from-macho-binary.py` script is a helper that is capable of cracking a Mach-O binary, such as `UIKit`, and finding appropriate symbols for image information.
+
+The `supported_artwork_files` directory contains a bunch of JSON files that have information about supported `.artwork` files and the images they contain.
+
+Finally, the `artwork` directory is a Python package that contains most of the interesting code for making things work.
+
+
