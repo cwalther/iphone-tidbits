@@ -21,7 +21,7 @@ To get the images out of a `.artwork` file, you *export* them. This fills a dire
 
 To export, run the tool as follows:
 
-    ./iOS-artwork.py create -a /path/to/artwork_file.artwork -d /path/to/export_directory/
+    ./iOS-artwork.py export -a /path/to/artwork_file.artwork -d /path/to/export_directory/
 
 That's all there is to it!
 
@@ -31,7 +31,7 @@ It is equally easy to turn a directory full of PNGs into a new `.artwork` file.
 
 To create a new `.artwork` file, run the tool as follows:
 
-    ./iOS-artwork.py import -a /path/to/original_artwork_file.artwork -d /path/to/import_directory/ -c created_artwork_file.artwork
+    ./iOS-artwork.py create -a /path/to/original_artwork_file.artwork -d /path/to/import_directory/ -c created_artwork_file.artwork
 
 This will read all the PNGs in the `import_directory` directory and place them in the file named `created_artwork_file.artwork`. Again, easy!
 
