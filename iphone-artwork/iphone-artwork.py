@@ -2,26 +2,30 @@
 
 #-------------------------------------------------------------------------------
 #
-# iPhone artwork extractor
-# (c)2008 Dave Peck <code [at] davepeck [dot] org> All Rights Reserved
-# http://davepeck.org/software/iphoneart/
+# iPhone .artwork file extractor
+# (c)2008-2011 Dave Peck <code [at] davepeck [dot] org> All Rights Reserved
+# 
+# Released under the three-clause BSD license.
 #
-# This software is free for you to use and modify, for any purpose.
-# If you do so, please be sure to mention my name and email address.
-# If you're adding the ability to handle newer artwork files, or different ones,
-# send me a patch and I'll update this file!
-#
-# To use, you must have python and the python imaging libraries (PIL) installed.
-#
-# Then run it (for example) as
-# ./iphone-artwork.py -export <artwork file.artwork> ./exportDirectory
-#   [or]
-# ./iphone-artwork -import <original file.artwork> ./importDirectory <createdFile.artwork>
-#
-# Please see the README.markdown for information on what files we can (and can't) extract here.
+# http://github.com/davepeck/iphone-tidbits/
 #
 #-------------------------------------------------------------------------------
 
+# iphone-artwork.py
+#
+# This script makes it easy to extract images from the .artwork files found
+# in the iOS SDK. To use it, you must have python and the Python Imaging Libraries
+# (PIL) installed.
+#
+# Run it as:
+#
+#   ./iphone-artwork.py -export <artwork file.artwork> ./exportDirectory
+#
+# You can also import a directory of images to create a new .artwork file:
+#
+#   ./iphone-artwork.py -import <original artwork file.artwork> ./importDirectory <created file.artwork>
+#
+# Please see the README.markdown file for more details.
 
 
 import sys

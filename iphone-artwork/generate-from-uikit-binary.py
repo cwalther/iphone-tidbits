@@ -1,5 +1,31 @@
 #!/usr/bin/env python
 
+#-------------------------------------------------------------------------------
+#
+# iPhone .artwork file extractor
+# (c)2008-2011 Dave Peck <code [at] davepeck [dot] org> All Rights Reserved
+# 
+# Released under the three-clause BSD license.
+#
+# http://github.com/davepeck/iphone-tidbits/
+#
+#-------------------------------------------------------------------------------
+
+# generate-from-uikit-binary.py
+#
+# The code in this file is capable of grabbing the names, sizes, and offsets
+# of all images in all (shared) artwork files.
+#
+# To run it, use ./generate-from-uikit-binary.py /path/to/UIKit /output/path/
+#
+# In general, you shouldn't have to run this. I'll run it when new versions of the
+# OS show up. 
+#
+# This code works by reading the mach-o header and symbol table from the UIKit
+# binary, and then looking for special unexported symbols known to reference
+# the names and size/offset information.  To use it, you must have the python
+# macholib and PIL installed.
+
 import sys
 import struct
 import pdb
