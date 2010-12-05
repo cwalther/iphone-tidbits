@@ -2,7 +2,7 @@
 
 #-------------------------------------------------------------------------------
 #
-# iPhone .artwork file extractor
+# iOS .artwork file extractor
 # (c)2008-2011 Dave Peck <code [at] davepeck [dot] org> All Rights Reserved
 # 
 # Released under the three-clause BSD license.
@@ -16,7 +16,9 @@
 # The code in this file is capable of grabbing the names, sizes, and offsets
 # of all images in all (shared) artwork files.
 #
-# To run it, use ./generate-from-uikit-binary.py /path/to/UIKit /output/path/
+# To run it, use:
+#
+#   ./generate-from-uikit-binary.py /path/to/UIKit /output/path/
 #
 # In general, you shouldn't have to run this. I'll run it when new versions of the
 # OS show up. 

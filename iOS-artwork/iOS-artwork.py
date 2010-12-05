@@ -2,7 +2,7 @@
 
 #-------------------------------------------------------------------------------
 #
-# iPhone .artwork file extractor
+# iOS .artwork file extractor
 # (c)2008-2011 Dave Peck <code [at] davepeck [dot] org> All Rights Reserved
 # 
 # Released under the three-clause BSD license.
@@ -11,7 +11,7 @@
 #
 #-------------------------------------------------------------------------------
 
-# iphone-artwork.py
+# iOS-artwork.py
 #
 # This script makes it easy to extract images from the .artwork files found
 # in the iOS SDK. To use it, you must have python and the Python Imaging Libraries
@@ -19,11 +19,11 @@
 #
 # Run it as:
 #
-#   ./iphone-artwork.py -export <artwork file.artwork> ./exportDirectory
+#   ./iOS-artwork.py -export <artwork file.artwork> ./exportDirectory
 #
 # You can also import a directory of images to create a new .artwork file:
 #
-#   ./iphone-artwork.py -import <original artwork file.artwork> ./importDirectory <created file.artwork>
+#   ./iOS-artwork.py -import <original artwork file.artwork> ./importDirectory <created file.artwork>
 #
 # Please see the README.markdown file for more details.
 
@@ -168,21 +168,27 @@ SupportedFiles = {
     ],
     SharedIPhoneArtwork: [
         (SharedIPhone_4_1_0_Size, SharedIPhone_4_1_0_ImageSizes, 'shared-iphone-'),
-        (SharedIPhone_4_2_1_Size, SharedIPhone_4_2_1_ImageSizes, 'shared-iphone-'),
     ],
     SharedIPhone2xArtwork: [
         (SharedIPhone2x_4_1_0_Size, SharedIPhone2x_4_1_0_ImageSizes, 'shared-iphone-2x-'),
     ],
     SharedIPadArtwork: [
         (SharedIPad_4_1_0_Size, SharedIPad_4_1_0_ImageSizes, 'shared-ipad-'),
-        (SharedIPad_4_2_1_Size, SharedIPad_4_2_1_ImageSizes, 'shared-ipad-'),
     ],
     SharedIPad2xArtwork: [
         (SharedIPad2x_4_1_0_Size, SharedIPad2x_4_1_0_ImageSizes, 'shared-ipad-2x-'),
     ],
-    Shared2xArtwork: [
-        (Shared2x_4_2_1_Size, Shared2x_4_2_1_ImageSizes, 'shared-2x-'),
-    ],
+}
+
+ParallelSupportedFileVersions = {
+    KeyboardLatinArtwork: ["2.0.0", "2.2.0"],
+    KeyboardCommonArtwork: ["2.0.0", "2.2.0"],
+    OtherArtwork: ["2.0.0", "2.2.0", "3.2.0"],
+    MobilePhonePackedImagesArtwork: ["2.0.0"],
+    SharedIPhoneArtwork: ["4.1.0"],
+    SharedIPhone2xArtwork: ["4.1.0"],
+    SharedIPadArtwork: ["4.1.0"],
+    SharedIPad2xArtwork: ["4.1.0"],
 }
 
 def usage_basic():
@@ -264,7 +270,49 @@ def export_images(data, imageSizes, exportDirectory, exportPrefix, debug = True,
         
         if (max_export is not None) and imageIndex == max_export:
             return
-
+            
+def action_oldskool(oldskool_directory):
+    # File format is json:
+    # {
+    #   name: "foo",
+    #   version: "4.2.1",
+    #   byte_size: 123858,
+    #   images:
+    # [
+    #   [ 'image-name.png', width, height, offset ],
+    #   ...
+    # ]
+    #
+    
+    # Walk over all this data and export it to somewhere well-known...
+    for supported_file_name, supported_file_versions in SupportedFiles.iteritems():
+        for supported_i, (supported_file_size, known_image_sizes, export_prefix) in enumerate(supported_file_versions):
+            
+            # For this given set of images, cons up a jsonable...
+            images_jsonable = []
+            image_base = 0
+            for image_i, (width, height) in enumerate(known_image_sizes):
+                images_jsonable.append(('%s%d.png' % (export_prefix, image_i), width, height, image_base))
+                memory_width = align_bytes(width, WidthByteAlignment)
+                image_base += (4 * height * memory_width)
+                image_base = align_bytes(image_base, ImageByteAlignment)
+            
+            # Now write it to disk
+            full_jsonable = {
+                "name": supported_file_name,
+                "version": ParallelSupportedFileVersions[supported_file_name][supported_i],
+                "byte_size": supported_file_size,
+                "images": images_jsonable,
+            }
+            
+            full_json = json.dumps(full_jsonable, indent = 4)
+            images_file_name = path.join(oldskool_directory, '%s-%d.json' % (supported_file_name, supported_file_size))
+            images_file = open(images_file_name, 'w')
+            images_file.write(full_json)
+            images_file.close()
+            print "Saved %d images to %s" % (image_i, images_file_name)
+    
+            
 def import_images(data, imageSizes, importDirectory, importPrefix, outputArtworkFileFullName):
     imageBase = 0
     imageIndex = 0
@@ -511,7 +559,7 @@ def intify(x):
     return int(x)
     
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 3:
         usage_basic()
         
     # TODO use optparse. wtf was i thinking?
@@ -593,6 +641,11 @@ if __name__ == "__main__":
                     print "\t(encountered exception making directory. a problem?)"
                 action_export(artwork_file_name, sub_target_directory, debug = True, max_export = 10)
                 survey_count += 1
+    elif action == "-oldskool":
+        # UNDOCUMENTED FEATURE: output this stuff in a format that the new iOS extractor can read.
+        if len(sys.argv) != 3:
+            usage_basic()
+        action_oldskool(sys.argv[2])
     else:
         usage_basic()
 
