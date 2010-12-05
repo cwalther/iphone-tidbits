@@ -9,7 +9,7 @@
 #
 #-------------------------------------------------------------------------------
 
-import macholib
+import macholib                     # You must have macholib installed. Search PyPi for it!
 from macholib.MachO import MachO
 
 from .binary_file import BinaryFile

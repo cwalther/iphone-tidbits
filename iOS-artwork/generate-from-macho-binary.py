@@ -39,6 +39,7 @@ import json
 from artwork.uikit_file import UIKitBinaryFile
         
 def process_artwork_set(artwork_set, uikit_directory_name, output_directory_name, version_string):
+    """Generate a json file for a single artwork set found in the mach-o binary."""
     print "Found artwork set named %s" % artwork_set.name
 
     images_jsonable = []
@@ -62,6 +63,7 @@ def process_artwork_set(artwork_set, uikit_directory_name, output_directory_name
     images_file.close()
 
 def main():
+    """Read command line options and extract image information. Currently only supports the UIKit binary."""
     uikit_file_name = os.path.abspath(sys.argv[1])
     uikit_directory_name = os.path.dirname(uikit_file_name)
     uikit = UIKitBinaryFile(uikit_file_name)

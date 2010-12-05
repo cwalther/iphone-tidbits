@@ -15,8 +15,8 @@ from .util import KnuthMorrisPratt
 
 class BinaryFile(object):
     """Represents a binary file on disk, and has tools to rapidly read and search it."""
-    def __init__(self, filename):
-        super(BinaryFile, self).__init__(filename)
+    def __init__(self, filename = None):
+        super(BinaryFile, self).__init__()
         self.filename = filename
         self._file = None
         self._data = None
