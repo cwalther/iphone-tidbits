@@ -124,15 +124,112 @@ class BinaryFile(object):
         
         
 #------------------------------------------------------------------------------
+# Structures
+#------------------------------------------------------------------------------
+        
+class Struct(object):
+    pass
+    
+class CFString(Struct):
+    """struct __builtin_CFString { const int *isa; int flags; const char *str; long length; }"""
+    SIZE = 16
+    
+    # See http://www.opensource.apple.com/source/CF/CF-550.42/CFString.c
+    kCFHasLengthByte = 0x04
+    kCFHasNullByte = 0x08
+    kCFIsUnicode = 0x10
+    
+    def __init__(self, endian, data, offset):
+        super(CFString, self).__init__()
+        self.endian = endian
+        self.data = data
+        self.offset = offset
+        self.objc_class, self.flags, self.pointer, self.length = struct.unpack_from(("%sLLLL" % endian), data, offset)
+        self.is_little_endian = (endian == "<")
+        
+    @property
+    def string(self):
+        """Read the const char* (string) portion of a CFString."""
+        s = None
+        
+        if (self.flags & CFString.kCFHasLengthByte):
+            assert ord(self.data[self.pointer]) == self.length, "Invalid length or length byte."
+            offset += 1
+        
+        if (self.flags & CFString.kCFIsUnicode):
+            bytes = self.data[self.pointer:self.pointer+(self.length * 2)]
+            last_byte = self.data[self.pointer+(self.length * 2)]
+            if self.is_little_endian:
+                s = bytes.decode('utf-16le')
+            else:
+                s = bytes.decode('utf-16be')
+        else:
+            bytes = self.data[self.pointer:self.pointer+self.length]
+            last_byte = self.data[self.pointer+self.length]
+            s = bytes.decode('ascii')
+        
+        if (self.flags & CFString.kCFHasNullByte):
+            assert last_byte == '\0', "Something went wrong reading cfstring."
+            
+        return s
+        
+class NList(Struct):
+    """struct nlist { int32_t n_un; uint8_t n_type; uint8_t n_sect; int16_t n_desc; uint32_t n_value; }"""
+    SIZE = 12
+    N_ARM_THUMB_DEF = 0x0008 # See MachOFileAbstraction.hpp
+    
+    def __init__(self, endian, data, offset):
+        super(Struct, self).__init__()
+        self.n_strx, self.n_type, self.n_sect, self.n_desc, self.n_value = struct.unpack_from(("%siBBhI" % endian), data, offset)
+        
+class ArtworkSetInformation(Struct):
+    SIZE = 36
+
+    def __init__(self, endian, data, offset):
+        super(ArtworkSetInformation, self).__init__()
+        # sizes_offset points directly to an array of ArtworkSizeInformation structs
+        # names_offset is the address of an array of pointers to cfstrings. (yikes.)
+        self.set_name_offset, unk1, unk2, self.sizes_offset, self.names_offset, self.artwork_count, unk3, unk4, unk5, unk6 = struct.unpack_from(("%sLLLLLHHLLL" % endian), data, offset)
+        self.endian = endian
+        self.data = data
+        self.offset = offset
+    
+    @property
+    def name(self):
+        return CFString(self.endian, self.data, self.set_name_offset).string
+    
+    def read_offset(self, offset):
+        """Dereference an address found at `offset`"""
+        return struct.unpack_from('%sL' % self.endian, self.data, offset)[0]
+    
+    def iter_artworks(self):
+        size_offset = self.sizes_offset
+        name_offset = self.names_offset
+
+        # Walk through the artwork and gather information.
+        for artwork_i in range(self.artwork_count):
+            ai = ArtworkSizeInformation(self.endian, self.data, size_offset)
+            name_pointer = self.read_offset(name_offset)
+            name_cfstring = CFString(self.endian, self.data, name_pointer)
+            
+            size_offset += ArtworkSizeInformation.SIZE
+            name_offset += 4
+            
+            yield (name_cfstring.string, ai)
+            
+    
+class ArtworkSizeInformation(Struct):
+    """Appears to be struct { unsigned long offset_into_artwork_file; unsigned int width; unsigned int height; }"""
+    SIZE = 8
+    def __init__(self, endian, data, offset):
+        super(ArtworkSizeInformation, self).__init__()
+        self.offset, self.width, self.height = struct.unpack_from(("%sLHH" % endian), data, offset)
+        
+        
+#------------------------------------------------------------------------------
 # MachOBinaryFile
 #------------------------------------------------------------------------------
 
-# See http://www.opensource.apple.com/source/CF/CF-550.42/CFString.c
-kCFStringSize = 16 # in bytes
-kCFHasLengthByte = 0x04
-kCFHasNullByte = 0x08
-kCFIsUnicode = 0x10
-        
 class MachOBinaryFile(BinaryFile, MachO):
     """Represents a Mach-O binary file, with special methods to 
     find important data in the file."""
@@ -156,6 +253,11 @@ class MachOBinaryFile(BinaryFile, MachO):
     def is_big_endian(self):
         return self.default_endian == ">"
 
+    @property
+    def default_header_offset(self):
+        # TODO: this is an assumption which probably doesn't hold true everywhere? What about fat headers?
+        return 0
+
     def macho_sections(self):
         for flat in flatten(self.default_header.commands):
             if type(flat) == macholib.mach_o.section:
@@ -170,45 +272,136 @@ class MachOBinaryFile(BinaryFile, MachO):
     def cfstring_section(self):
         return self.macho_section('__cfstring', '__DATA')
         
-    def iter_strings(self):
+    def iter_cfstrings(self):
         cfs = self.cfstring_section()
-        string_count = cfs.size / kCFStringSize
+        string_count = cfs.size / CFString.SIZE
         for i in range(string_count):
-            cfstring_addr = cfs.addr + (i * kCFStringSize)
-            flags, pointer, length = self.read_cfstring(cfstring_addr)
-            yield (cfstring_addr, pointer, length, self.read_string(flags, pointer, length))
+            cfstring_addr = cfs.addr + (i * CFString.SIZE)
+            cfstring = self.read_cfstring(cfstring_addr)
+            yield cfstring
+            
+    def iter_strings(self):
+        for cfstring in self.iter_cfstrings():
+            yield cfstring.string
 
     def read_cfstring(self, offset):
-        # struct __builtin_CFString { const int *isa; int flags; const char *str; long length; }
-        objc_class, flags, pointer, length = struct.unpack_from('<LLLL', self.data, offset)
-        return (flags, pointer, length)
+        """Read a constant CFString structure from the binary."""
+        return CFString(self.default_endian, self.data, offset)
+        
+    def read_nlist(self, offset):
+        """Read an nlist entry from the binary."""
+        return NList(self.default_endian, self.data, offset)
+        
+    def read_cstring(self, offset):
+        """Read an ASCII null-terminated C String from the binary."""
+        end = offset
+        while self.data[end] != '\0':
+            end += 1
+        return self.data[offset:end].decode('ascii')
+        
+    def read_offset(self, offset):
+        """Read a pointer value found at given offset."""
+        return struct.unpack_from('%sL' % self.default_endian, self.data, offset)
 
-    def read_string(self, flags, offset, length):
-        s = None
+    def find_symbol(self, symbol):
+        """Given a symbol (potentially not exported), return the offset into the binary where
+        that symbol's data is found."""
         
-        if (flags & kCFHasLengthByte):
-            assert ord(self.data[offset]) == length, "Invalid length or length byte."
-            offset += 1
+        #
+        # Find the relevant segments and symbol table.
+        #
+        segment_linkedit = None
+        segment_text = None
+        symbol_table = None
         
-        if (flags & kCFIsUnicode):
-            bytes = self.data[offset:offset+(length * 2)]
-            last_byte = self.data[offset+(length * 2)]
-            if self.is_little_endian:
-                s = bytes.decode('utf-16le')
-            else:
-                s = bytes.decode('utf-16be')
-        else:
-            bytes = self.data[offset:offset+length]
-            last_byte = self.data[offset+length]
-            s = bytes.decode('ascii')
+        for load_command, segment_command, data in self.default_header.commands:
+            if load_command.cmd == macholib.mach_o.LC_SEGMENT:
+                if segment_command.segname.startswith(macholib.mach_o.SEG_TEXT):
+                    segment_text = segment_command
+                elif segment_command.segname.startswith(macholib.mach_o.SEG_LINKEDIT):
+                    segment_linkedit = segment_command
+            elif load_command.cmd == macholib.mach_o.LC_SYMTAB:
+                symbol_table = segment_command # effectively a cast...
         
-        if (flags & kCFHasNullByte):
-            assert last_byte == '\0', "Something went wrong reading cfstring."
-            
-        return s
+        if (segment_linkedit is None) or (segment_text is None) or (symbol_table is None):
+            return None
+        
+        #
+        # Compute key offsets into the file
+        #
+        
+        vm_slide = self.default_header_offset - segment_text.vmaddr
+        symbols_addr = self.default_header_offset + symbol_table.symoff
+        strings_addr = self.default_header_offset + symbol_table.stroff
+        
+        symbol_addr = symbols_addr
+        for i in range(symbol_table.nsyms):
+            symbol_nlist = NList(self.default_endian, self.data, symbol_addr)
+            string_addr = strings_addr + symbol_nlist.n_strx
+            read_symbol = self.read_cstring(string_addr)
+            if (symbol_nlist.n_strx != 0) and (symbol == read_symbol):
+                address = vm_slide + symbol_nlist.n_value
+                if (symbol_nlist.n_desc & NList.N_ARM_THUMB_DEF) != 0:
+                    return (address | 1)
+                else:
+                    return address
+            symbol_addr += NList.SIZE
+        
+        return None
+
+
+#------------------------------------------------------------------------------
+# UIKitBinaryFile
+#------------------------------------------------------------------------------
+
+class UIKitBinaryFile(MachOBinaryFile):
+    """Represents the UIKit framework binary, with special tools to look for artwork."""
+
+    def __init__(self, filename):
+        super(MachOBinaryFile, self).__init__(filename)
+        
+    @property
+    def images_offset(self):
+        return self.find_symbol("___images")
     
+    @property
+    def mapped_images_offset(self):
+        return self.find_symbol("___mappedImages")
+        
+    @property
+    def shared_images_offset(self):
+        # TODO return self.find_symbol("___sharedImages")
+        return None
+        
+    @property
+    def shared_iphone_image_sets_offset(self):
+        return self.find_symbol("___sharedImageSetsPhone")
+        
+    @property
+    def shared_ipad_image_sets_offset(self):
+        return self.find_symbol("___sharedImageSetsPad")
+        
+    @property
+    def shared_image_sets_count(self):
+        # TODO: this doesn't work? shared_image_sets_offset = self.find_symbol("___sharedImageSetsCount")
+        return 2
 
+    def read_artwork_set_information(self, offset):
+        return ArtworkSetInformation(self.default_endian, self.data, offset)
 
+    def iter_shared_iphone_image_sets(self):
+        offset = self.shared_iphone_image_sets_offset
+        for artwork_set_i in range(self.shared_image_sets_count):
+            yield self.read_artwork_set_information(offset)
+            offset += ArtworkSetInformation.SIZE
+
+    def iter_shared_ipad_image_sets(self):
+        offset = self.shared_ipad_image_sets_offset
+        for artwork_set_i in range(self.shared_image_sets_count):
+            yield self.read_artwork_set_information(offset)
+            offset += ArtworkSetInformation.SIZE
+    
+        
 #------------------------------------------------------------------------------
 # ArtworkBinaryFile
 #------------------------------------------------------------------------------
@@ -223,50 +416,25 @@ class ArtworkBinaryFile(BinaryFile):
 # main()
 #------------------------------------------------------------------------------
 
-def find_png_strings(library):
-    for cfstring_addr, pointer, length, string in library.iter_strings():
-        print string
-        # if string.endswith('.png'):
-        #     found_refs = library.find_all_long(cfstring_addr)
-        #     print '[%X] %r %s' % (cfstring_addr, string, found_refs)
-    
 def main():
-    library = MachOBinaryFile(sys.argv[1])
-    find_png_strings(library)
-        
+    uikit = UIKitBinaryFile(sys.argv[1])
+    
+    for artwork_set in uikit.iter_shared_iphone_image_sets():
+        print "Found artwork set named %s" % artwork_set.name
+        for artwork_name, artwork_size in artwork_set.iter_artworks():
+            print "\t%s: (%d x %d at %X)" % (artwork_name, artwork_size.width, artwork_size.height, artwork_size.offset)
+
+    for artwork_set in uikit.iter_shared_ipad_image_sets():
+        print "Found artwork set named %s" % artwork_set.name
+        for artwork_name, artwork_size in artwork_set.iter_artworks():
+            print "\t%s: (%d x %d at %X)" % (artwork_name, artwork_size.width, artwork_size.height, artwork_size.offset)
+    
+    
 if __name__ == "__main__":
     main()
 
-# 
-# def read_string(data, offset):
-#     string = ''
-#     while data[offset] != '\0':
-#         string += data[offset]
-#         offset += 1
-#     return string
-#     
-# def read_ns_constant_string(data, offset):
-#     # 
-#     objc_class, char_star, length = struct.unpack_from('<QL', data, offset)
-#     return char_star
-#     
-# f = open(sys.argv[1])
-# binary = f.read()
-# f.close()
-# 
-# indirect = int(sys.argv[2])
-# count = int(sys.argv[3])
-# 
-# i = 0
-# while i < count:
-#     binary_string_table_offset = struct.unpack_from('<L', data, indirect)[0]
-#     binary_offset = read_binary_offset(binary, binary_string_table_offset)
-#     binary_string_table_offset += 16
-#     s = read_string(binary, binary_offset)
-#     assert len(s) > 0, "Whoops"
-#     print '[%d] %s' % (i, s)
-#     i += 1
 
+# Random useless notes
 # For Shared~iphone.artwork, 4256480 (0x0040F2E0)
 # next is at 4256495 (0x0040F2EF)
 # Name indexes start at 5497296 (0x0053E1D0) -- really 0x0053e1c8 is the start of the NSConstantString
