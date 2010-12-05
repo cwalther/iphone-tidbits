@@ -21,17 +21,17 @@ To get the images out of a `.artwork` file, you *export* them. This fills a dire
 
 To export, run the tool as follows:
 
-    ./iOS-artwork.py -export /path/to/artwork_file.artwork /path/to/export_directory/
+    ./iOS-artwork.py create -a /path/to/artwork_file.artwork -d /path/to/export_directory/
 
 That's all there is to it!
 
-### IMPORTING
+### CREATING
 
 It is equally easy to turn a directory full of PNGs into a new `.artwork` file.
 
-To import, run the tool as follows:
+To create a new `.artwork` file, run the tool as follows:
 
-    ./iOS-artwork.py -import /path/to/original_artwork_file.artwork /path/to/import_directory created_artwork_file.artwork
+    ./iOS-artwork.py import -a /path/to/original_artwork_file.artwork -d /path/to/import_directory/ -c created_artwork_file.artwork
 
 This will read all the PNGs in the `import_directory` directory and place them in the file named `created_artwork_file.artwork`. Again, easy!
 
@@ -39,7 +39,7 @@ You may wonder why you have to supply the *original* `.artwork` file in this exa
 
 ### VERSION HISTORY
 
-    v0.9 12/06/2010 - (CURRENT) massive rewrite to support iOS 4.2.1 files. Totally new generator script.
+    v0.9 12/06/2010 - (CURRENT) massive rewrite to support iOS 4.2.1 files. Totally new generator script based on cracking mach-o files.
     v0.8  9/13/2010 - support iPhone OS 4.1.0 and 3.2.0 artwork files.
     v0.7 12/07/2008 - support iPhone OS 2.2.0 artwork files from UIKit
     v0.6  7/28/2008 - support other image formats besides RGBA. Fix a filename-related bug (used relative name instead of absolute.)

@@ -21,9 +21,9 @@
 #
 #   ./iOS-artwork.py export -a artwork_file.artwork -d export_directory
 #
-# You can also import a directory of images to create a new .artwork file:
+# You can also create a new .artwork file by importing a directory of images:
 #
-#   ./iOS-artwork.py create -a original_artwork_file.artwork -d importDirectory -c created_artwork_file.artwork
+#   ./iOS-artwork.py create -a original_artwork_file.artwork -d import_directory -c created_artwork_file.artwork
 #
 # Please see the README.markdown file for more details.
 
@@ -106,7 +106,7 @@ def action_export(artwork_file_name, directory):
         pil_image.save(export_file_name, file_extension(export_file_name))
         print "\texported %s" % export_file_name
         
-    print "\nDONE!"
+    print "\nDONE EXPORTING!"
     
 def action_create(artwork_file_name, directory, create_file_name):
     set_info = get_artwork_set_info(artwork_file_name)
@@ -114,7 +114,7 @@ def action_create(artwork_file_name, directory, create_file_name):
     create_binary = WritableArtworkBinaryFile(create_file_name, artwork_binary)
     create_binary.open()
     
-    print "\nImporting %d images into new file named %s...\n\t(Using %s version %s as a template.)" % (set_info.image_count, create_file_name, set_info.name, set_info.version)
+    print "\nCreating a new file named %s by importing %d images...\n\t(Using %s version %s as a template.)" % (create_file_name, set_info.image_count, set_info.name, set_info.version)
     
     for image_info in set_info.iter_images():
         #
@@ -154,7 +154,7 @@ def action_create(artwork_file_name, directory, create_file_name):
     
     create_binary.close()
     
-    print "\nDONE!"
+    print "\nDONE CREATING!"
     
 def main(argv):
     #
@@ -169,7 +169,7 @@ def main(argv):
         Exports the contents of artwork_file.artwork as a set
         of images in the export_directory
     
-    import  
+    create  
         -a original_artwork_file.artwork 
         -d import_directory 
         -c created_artwork_file.artwork
