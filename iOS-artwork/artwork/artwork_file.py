@@ -42,6 +42,10 @@ class ArtworkBinaryFile(BinaryFile):
             for x in range(width):
                 pixel_offset = offset + (4 * ((y * aligned_width) + x))
                 b, g, r, a = struct.unpack_from('<BBBB', self.data, pixel_offset)
+                if a != 0:
+                    r = (r*255 + a//2)//a
+                    g = (g*255 + a//2)//a
+                    b = (b*255 + a//2)//a
                 pil_pixels[x, y] = (r, g, b, a)
                 
         return pil_image       
@@ -96,10 +100,10 @@ class WritableArtworkBinaryFile(ArtworkBinaryFile):
             for x in range(width):
                 if pil_image.mode == 'RGBA':
                     r, g, b, a = pil_pixels[x, y]
-                    packed = struct.pack('<BBBB', b, g, r, a)
+                    packed = struct.pack('<BBBB', (b*a + 127)//255, (g*a + 127)//255, (r*a + 127)//255, a)
                 else:
                     r, g, b = pil_pixels[x, y]
-                    packed = struct.pack('<BBBB', b, g, r, 0)
+                    packed = struct.pack('<BBBB', b, g, r, 255)
                 pixel_offset = offset + (4 * ((y * aligned_width) + x))
                 self.data[pixel_offset:pixel_offset + 4] = packed    
         
